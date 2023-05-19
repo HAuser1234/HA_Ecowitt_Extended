@@ -4,6 +4,7 @@
 # HA_Ecowitt_Extended
 this repository is trying to get the most out of your ecowitt weatherstation in homeassistant!
 Very easy config and plug'n'play use with the local weather forecast repo!! https://github.com/HAuser1234/homeassistant-local-weather-forecast
+If you like this repository please leave a star ⭐
 
 # Features
 - get all sensors of your weathersation as entities!
