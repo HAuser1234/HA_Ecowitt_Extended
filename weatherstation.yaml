@@ -1,0 +1,221 @@
+# Sources:
+#   https://github.com/Xorfor/Domoticz-PWS-Plugin/blob/master/plugin.py
+#   https://community.home-assistant.io/t/weather-station-recommendation/55353/23
+#   https://www.home-assistant.io/integrations/template/
+#   https://github.com/pnbruckner/ha-illuminance/blob/master/custom_components/illuminance/sensor.py
+#   https://github.com/Xorfor/HA-PWS
+
+# Code by https://github.com/HAuser1234
+#
+
+template:
+  - trigger:
+      - platform: webhook
+        webhook_id: pws
+        allowed_methods:
+          - POST
+        local_only: true
+
+    sensor:
+      # --------------------------------------------------------------------------------
+      # Temperature
+      - name: "Weatherstation Temperature"
+        device_class: temperature
+        unit_of_measurement: "°C"
+        state: "{{ ((trigger.data.tempf | float - 32) / 1.8) | round(1) }}"
+        attributes:
+          # Dewpoint
+          #https://www.ajdesigner.com/phphumidity/dewpoint_equation_dewpoint_temperature.php
+          weatherstation_dewpoint: "{{ ((trigger.data.humidity | float / 100) ** (1 / 8) * (112 + 0.9 * ((trigger.data.tempf | float - 32) / 1.8)) + 0.1 * ((trigger.data.tempf | float - 32) / 1.8) - 112) | round(1) }}"
+          # Windchill
+          #https://en.wikipedia.org/wiki/Wind_chill
+          weatherstation_windchill: >
+            {% set v = states('sensor.weatherstation_wind_speed') | float(0)  %}
+            {% set t = states('sensor.weatherstation_temperature') | float(0) %}
+            {% if t > -46.0 and t < 10.0 and v > 1.3 and v < 49.0 %}
+              {% set w = v ** 0.16 %}
+              {{ (13.12 + 0.6215 * t - 13.96 * w + 0.4867 * t * w) | round(1) }}
+            {% else %}
+              {{ t }}
+            {% endif %}
+          # Heat index
+          #https://en.wikipedia.org/wiki/Heat_index
+          weatherstation_heat_index: >
+            {% set t = states('sensor.weatherstation_temperature') | float(0) %}
+            {% set h = states('sensor.weatherstation_humidity') | float(0) %}
+            {% if t >= 26 and h >= 0.0 and h <= 100.0 %}
+              {% set tp = t ** 2 %}
+              {% set hp = h ** 2 %}
+              {{ (-8.78469475556 
+                  + 1.61139411 * t 
+                  + 2.33854883889 * h 
+                  + -0.14611605 * t * h 
+                  + -0.012308094 * tp 
+                  + -0.0164248277778 * hp 
+                  + 0.002211732 * tp * h
+                  + 0.00072546 * t * hp
+                  + -0.000003582 * tp * hp
+                  ) | round(1) }}
+            {% else %}
+              {{ t }}
+            {% endif %}
+
+      - name: "Weatherstation Temperature indoor"
+        device_class: temperature
+        unit_of_measurement: "°C"
+        state: "{{ ((trigger.data.tempinf | float - 32) / 1.8) | round(1) }}"
+      # --------------------------------------------------------------------------------
+      # Humidity
+      - name: "Weatherstation Humidity"
+        device_class: humidity
+        unit_of_measurement: "%"
+        state: "{{ trigger.data.humidity }}"
+      - name: "Weatherstation Humidity indoor"
+        device_class: humidity
+        unit_of_measurement: "%"
+        state: "{{ trigger.data.humidityin }}"
+      # --------------------------------------------------------------------------------
+      # Barometer
+      - name: "Weatherstation Barometer relative"
+        device_class: pressure
+        unit_of_measurement: "hPa"
+        state: "{{ (trigger.data.baromrelin | float * 33.86) | round(1) }}"
+
+      - name: "Weatherstation Barometer absolute"
+        device_class: pressure
+        unit_of_measurement: "hPa"
+        state: "{{ (trigger.data.baromabsin | float * 33.86) | round(1) }}"
+      # --------------------------------------------------------------------------------
+      # Rain
+      - name: "Weatherstation Rainrate"
+        unit_of_measurement: "mm/h"
+        state: "{{ (trigger.data.rainratein | float * 2.54 * 10) | round(1) }}"
+
+      - name: "Weatherstation Rain daily"
+        unit_of_measurement: "mm"
+        state: "{{ (trigger.data.dailyrainin | float * 2.54 * 10) | round(1) }}"
+        attributes:
+          rain_hour: "{{ (trigger.data.hourlyrainin | float * 2.54 * 10) | round(1) }}"
+          rain_week: "{{ (trigger.data.weeklyrainin | float * 2.54 * 10) | round(1) }}"
+          rain_month: "{{ (trigger.data.monthlyrainin | float * 2.54 * 10) | round(1) }}"
+          rain_year: "{{ (trigger.data.yearlyrainin | float * 2.54 * 10) | round(1) }}"
+          rain_total: "{{ (trigger.data.totalrainin | float * 2.54 * 10) | round(1) }}"
+      # --------------------------------------------------------------------------------
+      # Sun
+      - name: "Weatherstation Solar radiation"
+        device_class: illuminance
+        unit_of_measurement: "W/m²"
+        state: "{{ trigger.data.solarradiation | float |round(0) }}"
+
+      - name: "Weatherstation UV"
+        device_class: illuminance
+        unit_of_measurement: "UV"
+        state: "{{ trigger.data.uv }}"
+      # --------------------------------------------------------------------------------
+      # Wind
+      - name: "Weatherstation Wind speed"
+        unit_of_measurement: "km/h"
+        state: "{{ ((trigger.data.windspeedmph | float * 0.44704)*3.6) | round(1) }}"
+      - name: "WeatherstationWind gust"
+        unit_of_measurement: "km/h"
+        state: "{{ ((trigger.data.windgustmph | float * 0.44704)*3.6) | round(1) }}"
+        attributes:
+          windgust_day_max: "{{ (trigger.data.maxdailygust | float * 0.44704) | round(1) }}"
+      - name: "Weatherstation Wind direction"
+        unit_of_measurement: "°"
+        state: "{{ trigger.data.winddir }}"
+        attributes:
+          wind_direction_text: >
+            {% set direction = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW', 'N'] %}
+            {% set degree = states('sensor.weatherstation_wind_direction') | float(0) %}
+            {{ direction[((degree + 11.25) / 22.5) | int] }}
+      # --------------------------------------------------------------------------------
+      # Station infos
+      - name: "Weatherstation"
+        state: "{{ trigger.data.model }}"
+        attributes:
+          stationtype: "{{ trigger.data.stationtype }}"
+          date: "{{ trigger.data.dateutc }}"
+          frequency: "{{ trigger.data.freq }}"
+          interval: "{{ trigger.data.interval }}"
+          runtime: "{{ trigger.data.runtime }}"
+          battery: "{{ trigger.data.wh65batt }}"
+          platform: "{{ trigger.platform }}"
+          webhook_id: "{{ trigger.webhook_id }}"
+
+      # extended calculations
+      - name: "Weatherstation cloudcover"
+        unit_of_measurement: "%"
+        state: >
+          {%set elevation_deg = states.sun.sun.attributes.elevation|float(0)%}
+          {%set elevation_rad = elevation_deg/360*2*pi%}
+          {%set u = sin(elevation_rad)%}
+          {%set x = 753.66156%}
+          {%set s = asin(x * cos(elevation_rad) / (x + 1))%}
+          {%set m = x * (cos(s) - u) + cos(s)%}
+          {%set m_ = e**(-0.2 * m) * u + 0.0289 * e**(-0.042 * m) * (1 + (elevation_deg + 90) * u / 57.29577951) %}
+          {%set lux = 133775 * m_%}
+          {%set w_m_2 = lux*0.0079%}
+          {%set current_radiation = states.sensor.weatherstation_solar_radiation.state|float(0)+0.001%}
+          {%set factor = w_m_2/current_radiation*1.0|float(0)%}
+          {%set cloud_cover = log(factor)*100%}
+          {%if cloud_cover>100%}{%set cloud_cover = 100%}{%elif cloud_cover<0%}{%set cloud_cover = 0%}{%endif%}
+          {%if w_m_2<200%}{%set day = 0%}{%else%}{%set day = 1%}{%endif%}
+          {%if day == 1%}{{cloud_cover|round(0)}}{%else%}{{"-1"}}{%endif%}
+        attributes:
+          theoretical_w_m_2_max: >
+            {%set elevation_deg = states.sun.sun.attributes.elevation|float(0)%}
+            {%set elevation_rad = elevation_deg/360*2*pi%}
+            {%set u = sin(elevation_rad)%}
+            {%set x = 753.66156%}
+            {%set s = asin(x * cos(elevation_rad) / (x + 1))%}
+            {%set m = x * (cos(s) - u) + cos(s)%}
+            {%set m_ = e**(-0.2 * m) * u + 0.0289 * e**(-0.042 * m) * (1 + (elevation_deg + 90) * u / 57.29577951) %}
+            {%set lux = 133775 * m_%}
+            {%set w_m_2 = lux*0.0079%}
+            {%set current_radiation = states.sensor.weatherstation_solar_radiation.state|float(0)+0.001%}
+            {% set factor = w_m_2/current_radiation*1.3|float(0)%}
+            {{w_m_2,factor|round(1)}}
+          cloud_type_mapping: >
+            {%set factor = states.sensor.weatherstation_cloudcover.attributes.theoretical_w_m_2_max[1]|float(1)%}
+            {%set possible_states = states.sensor.weatherstation_cloudcover.attributes.cloud_type_mapping_possible_attributes%}
+            {%if factor<= 2%}{{possible_states[0]}}
+            {%elif factor<= 3%}{{possible_states[1]}}
+            {%elif factor<= 7%}{{possible_states[2]}}
+            {%elif factor<= 8%}{{possible_states[3]}}
+            {%elif factor<= 9%}{{possible_states[4]}}
+            {%else%}{{possible_states[5]}}
+            {%endif%}
+          cloud_type_mapping_possible_attributes: >
+            {{("SUNNY",0),("PARTLYCLOUDY",1),("CLOUDY",3),("RAINING",4),("POURING",5),("STORM",6)}}
+      - name: "Weatherstation now"
+        state: >
+          "Weather now"
+        attributes:
+          weather_state: >
+            {%set cloud_state = states.sensor.weatherstation_cloudcover.attributes.cloud_type_mapping[1]|int(0)%}
+            {%set max_w_m_2 = states.sensor.weatherstation_cloudcover.attributes.theoretical_w_m_2_max[0]|float(0)%}
+            {%set rain_rate = states.sensor.weatherstation_rainrate.state|float(0)%}
+            {#day or night?#}
+            {%if max_w_m_2<200%}{%set day = 0%}{%else%}{%set day = 1%}{%endif%}
+            {# sunny or partly sunny or cloudy #}
+            {%if day == 1 and rain_rate == 0 and cloud_state<=3%}{%set weather_state = cloud_state%}
+            {%elif day == 1 and rain_rate == 0 and cloud_state>=3%}{%set weather_state = 3%}
+            {%elif day == 0 and rain_rate == 0%}{%set weather_state = 1%}
+            {# raining or pouring or thunder?? #}
+            {%elif day == 1 and rain_rate > 0 and cloud_state<3%}{%set weather_state = 4%}
+            {%elif day == 1 and rain_rate > 0 and cloud_state>=3%}{%set weather_state = cloud_state%}
+            {%elif day == 0 and rain_rate > 0%}{%set weather_state = 4%}
+            {%else%}{%set weather_state = -1%}
+            {%endif%}
+            {{weather_state}}
+          weather_icon: >
+            {%if states.sensor.weatherstation_now.state=="unavailable" or states.sensor.weatherstation_now.state=="unknown"%}{%set weather_state = -1%}{%else%}
+            {%set weather_state = states.sensor.weatherstation_now.attributes.weather_state|int(-1)%}{%endif%}
+            {%set conditions = [('mdi:weather-sunny','mdi:weather-night'),('mdi:weather-partly-cloudy', 'mdi:weather-night-partly-cloudy'),('mdi:weather-partly-rainy','mdi:weather-partly-rainy'),('mdi:weather-cloudy','mdi:weather-cloudy'),('mdi:weather-rainy','mdi:weather-rainy'),('mdi:weather-pouring','mdi:weather-pouring'),('mdi:weather-lightning-rainy','mdi:weather-lightning-rainy')]%}
+            {# [State][day/night], available states: sunny (0), partlycloudy(1), partlycloudyrain(2), cloudy(3), rainy(4), pouring(5), lightning-rainy(6) #}
+            {%if is_state('sun.sun', 'below_horizon')==true%}{%set daynight=1%}{%else%}{%set daynight=0%}{%endif%}
+            {%set max_w_m_2 = states.sensor.weatherstation_cloudcover.attributes.theoretical_w_m_2_max[0]|float(0)%}
+            {%if max_w_m_2>200%}{%set day = 0%}{%else%}{%set day = 1%}{%endif%}
+            {%set now = conditions[weather_state][day|int(0)]%}
+            {{now}}
