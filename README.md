@@ -1,3 +1,5 @@
+<a href="buymeacoffee.com/tobineidhaj" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
+
 # HA_Ecowitt_Extended
 this repository is trying to get the most out of your ecowitt weatherstation in homeassistant!
 Very easy config and plug'n'play use with the local weather forecast repo!! https://github.com/HAuser1234/homeassistant-local-weather-forecast
