@@ -49,7 +49,7 @@ homeassistant:
 - translate Card
 
 
-
+--------------------
 sources:
 This code os based on the work of:
 ```
@@ -60,8 +60,7 @@ https://www.home-assistant.io/integrations/template/
 https://github.com/pnbruckner/ha-illuminance/blob/master/custom_components/illuminance/sensor.py
 https://github.com/Xorfor/HA-PWS
 ```
-_
-
+--------------------
 THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 
 
