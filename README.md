@@ -15,6 +15,7 @@ Get your own customized local weather forecast!!
 
 # Card
 ![grafik](https://github.com/HAuser1234/HA_Ecowitt_Extended/assets/122117318/f04d1d63-8d75-4924-a3c5-25994ed332a4)
+
 (English translation should be easy. Please Contribute that!!)
 
 # Installation
