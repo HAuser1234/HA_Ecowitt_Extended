@@ -1,0 +1,1 @@
+# HA_Ecowitt_Extended
